@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-TW" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${isEdit} ? '編輯待辦事項' : '新增待辦事項'">待辦事項表單</title>
+</head>
+<body>
+    <div id="content">
+        <!-- 頁面標題 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i th:class="${isEdit} ? 'bi bi-pencil-square me-2' : 'bi bi-plus-circle me-2'"></i>
+                <span th:text="${isEdit} ? '編輯待辦事項' : '新增待辦事項'">待辦事項表單</span>
+            </h2>
+            <a th:href="@{/todos}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>返回列表
+            </a>
+        </div>
+
+        <!-- 表單卡片 -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clipboard-data me-2"></i>
+                            <span th:text="${isEdit} ? '修改待辦事項資訊' : '填寫待辦事項資訊'">表單標題</span>
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- 表單 -->
+                        <form th:action="${isEdit} ? @{/todos/{id}(id=${todoId})} : @{/todos}" 
+                              th:object="${todoRequest}" 
+                              method="post">
+                            
+                            <!-- 編輯時需要 PUT 方法 -->
+                            <input th:if="${isEdit}" type="hidden" name="_method" value="put">
+                            
+                            <!-- 標題欄位 -->
+                            <div class="form-floating mb-3">
+                                <input type="text" 
+                                       class="form-control" 
+                                       th:class="${#fields.hasErrors('title')} ? 'form-control is-invalid' : 'form-control'"
+                                       id="title" 
+                                       th:field="*{title}" 
+                                       placeholder="請輸入待辦事項標題"
+                                       maxlength="255"
+                                       required>
+                                <label for="title">
+                                    <i class="bi bi-card-text me-1"></i>標題 <span class="text-danger">*</span>
+                                </label>
+                                <div th:if="${#fields.hasErrors('title')}" class="invalid-feedback">
+                                    <span th:errors="*{title}">標題錯誤</span>
+                                </div>
+                                <div class="form-text">請輸入簡潔明確的待辦事項標題（最多 255 字元）</div>
+                            </div>
+                            
+                            <!-- 描述欄位 -->
+                            <div class="form-floating mb-3">
+                                <textarea class="form-control" 
+                                          th:class="${#fields.hasErrors('description')} ? 'form-control is-invalid' : 'form-control'"
+                                          id="description" 
+                                          th:field="*{description}" 
+                                          placeholder="請輸入詳細描述（可選）"
+                                          style="height: 120px"
+                                          maxlength="1000"></textarea>
+                                <label for="description">
+                                    <i class="bi bi-file-text me-1"></i>描述
+                                </label>
+                                <div th:if="${#fields.hasErrors('description')}" class="invalid-feedback">
+                                    <span th:errors="*{description}">描述錯誤</span>
+                                </div>
+                                <div class="form-text">詳細說明這個待辦事項的內容（最多 1000 字元，可選填）</div>
+                            </div>
+                            
+                            <!-- 預計完成日期 -->
+                            <div class="form-floating mb-4">
+                                <input type="date" 
+                                       class="form-control" 
+                                       th:class="${#fields.hasErrors('dueDate')} ? 'form-control is-invalid' : 'form-control'"
+                                       id="dueDate" 
+                                       th:field="*{dueDate}" 
+                                       th:min="${#temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}"
+                                       required>
+                                <label for="dueDate">
+                                    <i class="bi bi-calendar-event me-1"></i>預計完成日期 <span class="text-danger">*</span>
+                                </label>
+                                <div th:if="${#fields.hasErrors('dueDate')}" class="invalid-feedback">
+                                    <span th:errors="*{dueDate}">預計完成日期錯誤</span>
+                                </div>
+                                <div class="form-text">選擇您計劃完成這個待辦事項的日期</div>
+                            </div>
+                            
+                            <!-- 表單按鈕 -->
+                            <div class="d-flex gap-2 justify-content-end">
+                                <!-- 取消按鈕 -->
+                                <a th:href="@{/todos}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>取消
+                                </a>
+                                
+                                <!-- 重設按鈕 -->
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>重設
+                                </button>
+                                
+                                <!-- 提交按鈕 -->
+                                <button type="submit" class="btn btn-primary">
+                                    <i th:class="${isEdit} ? 'bi bi-check-circle me-1' : 'bi bi-plus-circle me-1'"></i>
+                                    <span th:text="${isEdit} ? '更新待辦事項' : '建立待辦事項'">提交</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- 提示卡片 -->
+                <div class="card mt-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-lightbulb me-1"></i>小提示
+                        </h6>
+                        <ul class="mb-0">
+                            <li><strong>標題</strong>：簡潔明確地描述要做的事情</li>
+                            <li><strong>描述</strong>：可以包含更詳細的步驟或注意事項</li>
+                            <li><strong>預計完成日期</strong>：幫助您規劃時間和優先順序</li>
+                            <li th:if="${isEdit}"><strong>編輯模式</strong>：修改後點擊「更新待辦事項」儲存變更</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 自定義 JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 自動聚焦到標題欄位
+            document.getElementById('title').focus();
+            
+            // 字數統計
+            const titleInput = document.getElementById('title');
+            const descriptionInput = document.getElementById('description');
+            
+            function updateCharCount(input, maxLength) {
+                const currentLength = input.value.length;
+                const remaining = maxLength - currentLength;
+                
+                // 找到對應的 form-text 元素並更新
+                const formText = input.parentElement.querySelector('.form-text');
+                if (formText) {
+                    const originalText = formText.textContent;
+                    const baseText = originalText.split('（')[0];
+                    formText.textContent = baseText + `（${currentLength}/${maxLength} 字元）`;
+                    
+                    // 接近上限時改變顏色
+                    if (remaining < 20) {
+                        formText.classList.add('text-warning');
+                    } else {
+                        formText.classList.remove('text-warning');
+                    }
+                }
+            }
+            
+            // 為標題和描述欄位添加字數統計
+            titleInput.addEventListener('input', function() {
+                updateCharCount(this, 255);
+            });
+            
+            descriptionInput.addEventListener('input', function() {
+                updateCharCount(this, 1000);
+            });
+            
+            // 初始化字數統計
+            updateCharCount(titleInput, 255);
+            updateCharCount(descriptionInput, 1000);
+            
+            // 表單驗證
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                const title = titleInput.value.trim();
+                const dueDate = document.getElementById('dueDate').value;
+                
+                if (!title) {
+                    e.preventDefault();
+                    alert('請輸入待辦事項標題');
+                    titleInput.focus();
+                    return;
+                }
+                
+                if (!dueDate) {
+                    e.preventDefault();
+                    alert('請選擇預計完成日期');
+                    document.getElementById('dueDate').focus();
+                    return;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

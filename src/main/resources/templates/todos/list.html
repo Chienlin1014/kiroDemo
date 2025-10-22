@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-TW" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>待辦事項列表</title>
+</head>
+<body>
+    <div id="content">
+        <!-- 頁面標題和操作按鈕 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="bi bi-list-check me-2"></i>我的待辦事項
+            </h2>
+            <a th:href="@{/todos/new}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>新增待辦事項
+            </a>
+        </div>
+
+        <!-- 排序選項 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-sort-down me-1"></i>排序方式
+                </h6>
+                <div class="btn-group" role="group">
+                    <a th:href="@{/todos(sortBy='CREATED_AT_DESC')}" 
+                       th:class="${sortBy == 'CREATED_AT_DESC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                        <i class="bi bi-calendar-plus me-1"></i>建立時間 (新→舊)
+                    </a>
+                    <a th:href="@{/todos(sortBy='CREATED_AT_ASC')}" 
+                       th:class="${sortBy == 'CREATED_AT_ASC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                        <i class="bi bi-calendar-plus me-1"></i>建立時間 (舊→新)
+                    </a>
+                    <a th:href="@{/todos(sortBy='DUE_DATE_ASC')}" 
+                       th:class="${sortBy == 'DUE_DATE_ASC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                        <i class="bi bi-calendar-event me-1"></i>預計完成日 (近→遠)
+                    </a>
+                    <a th:href="@{/todos(sortBy='DUE_DATE_DESC')}" 
+                       th:class="${sortBy == 'DUE_DATE_DESC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                        <i class="bi bi-calendar-event me-1"></i>預計完成日 (遠→近)
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 待辦事項列表 -->
+        <div th:if="${todos != null and !todos.empty}">
+            <div class="row">
+                <div th:each="todo : ${todos}" class="col-12 mb-3">
+                    <div class="card todo-item" th:classappend="${todo.completed} ? 'todo-completed' : ''">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <!-- 完成狀態切換 -->
+                                <div class="col-auto">
+                                    <form th:action="@{/todos/{id}/toggle(id=${todo.id})}" method="post" class="d-inline">
+                                        <button type="submit" 
+                                                class="btn btn-link p-0 border-0"
+                                                th:title="${todo.completed} ? '標記為未完成' : '標記為已完成'">
+                                            <i th:class="${todo.completed} ? 'bi bi-check-square-fill text-success fs-4' : 'bi bi-square text-muted fs-4'"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                <!-- 待辦事項內容 -->
+                                <div class="col">
+                                    <h5 class="card-title todo-title mb-1" th:text="${todo.title}">待辦事項標題</h5>
+                                    <p class="card-text text-muted mb-2" th:if="${todo.description}" th:text="${todo.description}">待辦事項描述</p>
+                                    
+                                    <!-- 時間資訊 -->
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar-plus me-1"></i>
+                                            建立：<span th:text="${#temporals.format(todo.createdAt, 'yyyy/MM/dd HH:mm')}">2024/10/22 10:30</span>
+                                        </small>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar-event me-1"></i>
+                                            預計：<span th:text="${#temporals.format(todo.dueDate, 'yyyy/MM/dd')}">2024/10/25</span>
+                                        </small>
+                                        <small th:if="${todo.completed and todo.completedAt != null}" class="text-success">
+                                            <i class="bi bi-check-circle me-1"></i>
+                                            完成：<span th:text="${#temporals.format(todo.completedAt, 'yyyy/MM/dd HH:mm')}">2024/10/24 15:30</span>
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- 逾期警告 -->
+                                    <div th:if="${!todo.completed and todo.dueDate.isBefore(T(java.time.LocalDate).now())}" 
+                                         class="mt-2">
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>已逾期
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- 即將到期警告 -->
+                                    <div th:if="${!todo.completed and todo.dueDate.isEqual(T(java.time.LocalDate).now())}" 
+                                         class="mt-2">
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-clock me-1"></i>今日到期
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 操作按鈕 -->
+                                <div class="col-auto">
+                                    <div class="btn-group" role="group">
+                                        <!-- 編輯按鈕 -->
+                                        <a th:href="@{/todos/{id}/edit(id=${todo.id})}" 
+                                           class="btn btn-outline-primary btn-sm"
+                                           title="編輯">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        
+                                        <!-- 刪除按鈕 -->
+                                        <form th:action="@{/todos/{id}(id=${todo.id})}" 
+                                              method="post" 
+                                              class="d-inline delete-form"
+                                              th:data-todo-title="${todo.title}">
+                                            <input type="hidden" name="_method" value="delete">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-danger btn-sm"
+                                                    title="刪除">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 空狀態 -->
+        <div th:if="${todos == null or todos.empty}" class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+            </div>
+            <h4 class="text-muted mb-3">還沒有任何待辦事項</h4>
+            <p class="text-muted mb-4">開始建立您的第一個待辦事項，讓生活更有條理！</p>
+            <a th:href="@{/todos/new}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle me-2"></i>建立第一個待辦事項
+            </a>
+        </div>
+
+        <!-- 統計資訊 -->
+        <div th:if="${todos != null and !todos.empty}" class="mt-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h5 class="text-primary" th:text="${todos.size()}">0</h5>
+                            <small class="text-muted">總計</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="text-success" th:with="completedCount=${#aggregates.sum(todos.![completed ? 1 : 0])}" th:text="${completedCount}">0</h5>
+                            <small class="text-muted">已完成</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="text-warning" th:with="completedCount=${#aggregates.sum(todos.![completed ? 1 : 0])}" th:text="${todos.size() - completedCount}">0</h5>
+                            <small class="text-muted">待完成</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

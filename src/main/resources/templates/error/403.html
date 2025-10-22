@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-TW" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>存取被拒絕 - 403</title>
+</head>
+<body>
+    <div id="content">
+        <div class="text-center py-5">
+            <!-- 錯誤圖示 -->
+            <div class="mb-4">
+                <i class="bi bi-shield-exclamation display-1 text-danger"></i>
+            </div>
+            
+            <!-- 錯誤標題 -->
+            <h1 class="display-4 text-muted mb-3">403</h1>
+            <h2 class="mb-4">存取被拒絕</h2>
+            
+            <!-- 錯誤訊息 -->
+            <div class="alert alert-danger d-inline-block" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <span th:if="${error}" th:text="${error}">您沒有權限存取此資源</span>
+                <span th:unless="${error}">您沒有權限存取此資源</span>
+            </div>
+            
+            <!-- 可能的原因 -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-info-circle me-2"></i>可能的原因
+                            </h5>
+                            <ul class="text-start">
+                                <li>您尚未登入系統</li>
+                                <li>您的會話已過期</li>
+                                <li>您嘗試存取其他使用者的資料</li>
+                                <li>您的帳號權限不足</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 建議操作 -->
+            <div class="row justify-content-center mt-3">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-lightbulb me-2"></i>建議操作
+                            </h5>
+                            <ul class="text-start">
+                                <li>重新登入您的帳號</li>
+                                <li>確認您有權限存取此資源</li>
+                                <li>聯絡系統管理員確認權限設定</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 操作按鈕 -->
+            <div class="mt-4">
+                <a th:href="@{/login}" class="btn btn-primary btn-lg me-3">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>重新登入
+                </a>
+                <a th:href="@{/todos}" class="btn btn-outline-primary btn-lg me-3">
+                    <i class="bi bi-house me-2"></i>回到首頁
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>返回上頁
+                </button>
+            </div>
+            
+            <!-- 聯絡資訊 -->
+            <div class="mt-5">
+                <p class="text-muted">
+                    如果您認為這是系統錯誤，請聯絡系統管理員
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

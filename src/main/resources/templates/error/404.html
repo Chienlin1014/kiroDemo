@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-TW" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>找不到頁面 - 404</title>
+</head>
+<body>
+    <div id="content">
+        <div class="text-center py-5">
+            <!-- 錯誤圖示 -->
+            <div class="mb-4">
+                <i class="bi bi-exclamation-triangle-fill display-1 text-warning"></i>
+            </div>
+            
+            <!-- 錯誤標題 -->
+            <h1 class="display-4 text-muted mb-3">404</h1>
+            <h2 class="mb-4">找不到頁面</h2>
+            
+            <!-- 錯誤訊息 -->
+            <div class="alert alert-warning d-inline-block" role="alert">
+                <i class="bi bi-info-circle me-2"></i>
+                <span th:if="${error}" th:text="${error}">您要尋找的頁面不存在或已被移除</span>
+                <span th:unless="${error}">您要尋找的頁面不存在或已被移除</span>
+            </div>
+            
+            <!-- 可能的原因 -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-question-circle me-2"></i>可能的原因
+                            </h5>
+                            <ul class="text-start">
+                                <li>網址輸入錯誤</li>
+                                <li>頁面已被移除或重新命名</li>
+                                <li>您沒有權限存取此頁面</li>
+                                <li>連結已過期</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 操作按鈕 -->
+            <div class="mt-4">
+                <a th:href="@{/todos}" class="btn btn-primary btn-lg me-3">
+                    <i class="bi bi-house me-2"></i>回到首頁
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>返回上頁
+                </button>
+            </div>
+            
+            <!-- 聯絡資訊 -->
+            <div class="mt-5">
+                <p class="text-muted">
+                    如果您認為這是系統錯誤，請聯絡系統管理員
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

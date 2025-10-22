@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: todo-list-app-test
+  
+  # H2 測試資料庫配置
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # H2 Console 配置（測試時關閉）
+  h2:
+    console:
+      enabled: false
+  
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  
+  # SQL 初始化配置
+  sql:
+    init:
+      mode: never
+      continue-on-error: false
+  
+  # Spring Session 配置
+  session:
+    store-type: jdbc
+    timeout: 30m
+    jdbc:
+      initialize-schema: always
+      table-name: SPRING_SESSION
+  
+  # Thymeleaf 配置
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+
+# 日誌配置（測試時減少輸出）
+logging:
+  level:
+    org.springframework.security: WARN
+    org.springframework.session: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    com.course: INFO
+    root: WARN
