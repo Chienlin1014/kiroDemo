@@ -1,12 +1,15 @@
 package com.course.kirodemo.exception;
 
+import com.course.kirodemo.dto.ExtendTodoResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -78,7 +81,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public String handleValidationException(MethodArgumentNotValidException ex, Model model, HttpServletRequest request) {
+    public Object handleValidationException(MethodArgumentNotValidException ex, Model model, HttpServletRequest request) {
         logger.warn("表單驗證異常 - 請求路徑: {}", request.getRequestURI());
         
         StringBuilder errorMessage = new StringBuilder("資料驗證失敗：");
@@ -86,6 +89,18 @@ public class GlobalExceptionHandler {
             errorMessage.append(error.getField()).append(" - ").append(error.getDefaultMessage()).append("; ")
         );
         
+        // 如果是延期相關的 AJAX 請求，回傳 JSON 回應
+        String requestURI = request.getRequestURI();
+        String acceptHeader = request.getHeader("Accept");
+        boolean isAjaxRequest = "XMLHttpRequest".equals(request.getHeader("X-Requested-With")) ||
+                               (acceptHeader != null && acceptHeader.contains("application/json"));
+        
+        if (isAjaxRequest && requestURI.contains("/extend")) {
+            ExtendTodoResponse response = ExtendTodoResponse.failure("輸入驗證失敗: " + errorMessage.toString());
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        // 一般 Web 請求回傳錯誤頁面
         model.addAttribute("error", errorMessage.toString());
         model.addAttribute("status", HttpStatus.BAD_REQUEST.value());
         return "error/error";
@@ -125,6 +140,35 @@ public class GlobalExceptionHandler {
             return "redirect:/todos";
         }
         return "redirect:/";
+    }
+    
+    /**
+     * 處理無效延期異常
+     */
+    @ExceptionHandler(InvalidExtensionException.class)
+    @ResponseBody
+    public ResponseEntity<ExtendTodoResponse> handleInvalidExtension(
+            InvalidExtensionException ex, HttpServletRequest request) {
+        logger.warn("無效延期異常: {} - 請求路徑: {}", ex.getMessage(), request.getRequestURI());
+        
+        ExtendTodoResponse response = ExtendTodoResponse.failure(ex.getMessage());
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    /**
+     * 處理不允許延期異常
+     */
+    @ExceptionHandler(ExtensionNotAllowedException.class)
+    @ResponseBody
+    public ResponseEntity<ExtendTodoResponse> handleExtensionNotAllowed(
+            ExtensionNotAllowedException ex, HttpServletRequest request) {
+        logger.warn("不允許延期異常: {} - 請求路徑: {}", ex.getMessage(), request.getRequestURI());
+        
+        ExtendTodoResponse response = ex.getTodoId() != null 
+            ? ExtendTodoResponse.failure(ex.getMessage(), ex.getTodoId())
+            : ExtendTodoResponse.failure(ex.getMessage());
+        
+        return ResponseEntity.badRequest().body(response);
     }
     
     /**

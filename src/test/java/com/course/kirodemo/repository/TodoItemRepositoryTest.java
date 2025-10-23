@@ -322,4 +322,175 @@ class TodoItemRepositoryTest {
         assertThat(testUserTodos.get(0).getUser()).isEqualTo(testUser);
         assertThat(anotherUserTodos.get(0).getUser()).isEqualTo(anotherUser);
     }
+    
+    @Test
+    @DisplayName("查詢符合延期條件的待辦事項時應該回傳三天內到期且未完成的任務")
+    void test_findEligibleForExtensionByUsername_whenEligibleTodosExist_then_shouldReturnEligibleTodos() {
+        // Given - 建立不同條件的待辦事項
+        TodoItem eligibleTodo1 = new TodoItem("今天到期未完成", "描述", LocalDate.now(), testUser);
+        TodoItem eligibleTodo2 = new TodoItem("明天到期未完成", "描述", LocalDate.now().plusDays(1), testUser);
+        TodoItem eligibleTodo3 = new TodoItem("三天後到期未完成", "描述", LocalDate.now().plusDays(3), testUser);
+        TodoItem notEligibleTodo1 = new TodoItem("四天後到期", "描述", LocalDate.now().plusDays(4), testUser);
+        TodoItem notEligibleTodo2 = new TodoItem("昨天到期", "描述", LocalDate.now().minusDays(1), testUser);
+        TodoItem completedTodo = new TodoItem("明天到期已完成", "描述", LocalDate.now().plusDays(1), testUser);
+        completedTodo.setCompleted(true);
+        
+        entityManager.persistAndFlush(eligibleTodo1);
+        entityManager.persistAndFlush(eligibleTodo2);
+        entityManager.persistAndFlush(eligibleTodo3);
+        entityManager.persistAndFlush(notEligibleTodo1);
+        entityManager.persistAndFlush(notEligibleTodo2);
+        entityManager.persistAndFlush(completedTodo);
+        
+        // When - 查詢符合延期條件的待辦事項
+        LocalDate today = LocalDate.now();
+        LocalDate threeDaysLater = today.plusDays(3);
+        List<TodoItem> eligibleTodos = todoItemRepository.findEligibleForExtensionByUsername("testuser", today, threeDaysLater);
+        
+        // Then - 驗證查詢結果（只包含三天內到期且未完成的）
+        assertThat(eligibleTodos).hasSize(3);
+        assertThat(eligibleTodos).extracting(TodoItem::getTitle)
+                .containsExactly("今天到期未完成", "明天到期未完成", "三天後到期未完成"); // 依預計完成日升序排列
+        assertThat(eligibleTodos).allMatch(todo -> !todo.isCompleted());
+        assertThat(eligibleTodos).allMatch(todo -> 
+            !todo.getDueDate().isBefore(LocalDate.now()) && 
+            !todo.getDueDate().isAfter(LocalDate.now().plusDays(3)));
+    }
+    
+    @Test
+    @DisplayName("查詢符合延期條件的待辦事項時不同使用者應該回傳各自的結果")
+    void test_findEligibleForExtensionByUsername_whenMultipleUsers_then_shouldReturnUserSpecificResults() {
+        // Given - 為不同使用者建立符合條件的待辦事項
+        TodoItem testUserTodo = new TodoItem("測試使用者符合條件", "描述", LocalDate.now().plusDays(1), testUser);
+        TodoItem anotherUserTodo = new TodoItem("其他使用者符合條件", "描述", LocalDate.now().plusDays(2), anotherUser);
+        
+        entityManager.persistAndFlush(testUserTodo);
+        entityManager.persistAndFlush(anotherUserTodo);
+        
+        // When - 查詢各自符合延期條件的待辦事項
+        LocalDate today = LocalDate.now();
+        LocalDate threeDaysLater = today.plusDays(3);
+        List<TodoItem> testUserEligible = todoItemRepository.findEligibleForExtensionByUsername("testuser", today, threeDaysLater);
+        List<TodoItem> anotherUserEligible = todoItemRepository.findEligibleForExtensionByUsername("anotheruser", today, threeDaysLater);
+        
+        // Then - 驗證資料隔離
+        assertThat(testUserEligible).hasSize(1);
+        assertThat(testUserEligible.get(0).getTitle()).isEqualTo("測試使用者符合條件");
+        
+        assertThat(anotherUserEligible).hasSize(1);
+        assertThat(anotherUserEligible.get(0).getTitle()).isEqualTo("其他使用者符合條件");
+    }
+    
+    @Test
+    @DisplayName("查詢指定日期範圍內的待辦事項時應該回傳正確結果")
+    void test_findByUserAndDueDateBetween_whenDateRangeSpecified_then_shouldReturnTodosInRange() {
+        // Given - 建立不同日期的待辦事項
+        TodoItem todoInRange1 = new TodoItem("範圍內任務1", "描述", LocalDate.now().plusDays(2), testUser);
+        TodoItem todoInRange2 = new TodoItem("範圍內任務2", "描述", LocalDate.now().plusDays(4), testUser);
+        TodoItem todoOutOfRange1 = new TodoItem("範圍外任務1", "描述", LocalDate.now().plusDays(1), testUser);
+        TodoItem todoOutOfRange2 = new TodoItem("範圍外任務2", "描述", LocalDate.now().plusDays(6), testUser);
+        
+        entityManager.persistAndFlush(todoInRange1);
+        entityManager.persistAndFlush(todoInRange2);
+        entityManager.persistAndFlush(todoOutOfRange1);
+        entityManager.persistAndFlush(todoOutOfRange2);
+        
+        // When - 查詢指定日期範圍內的待辦事項（2-5天後）
+        LocalDate startDate = LocalDate.now().plusDays(2);
+        LocalDate endDate = LocalDate.now().plusDays(5);
+        List<TodoItem> todosInRange = todoItemRepository.findByUserAndDueDateBetween("testuser", startDate, endDate);
+        
+        // Then - 驗證查詢結果
+        assertThat(todosInRange).hasSize(2);
+        assertThat(todosInRange).extracting(TodoItem::getTitle)
+                .containsExactly("範圍內任務1", "範圍內任務2"); // 依預計完成日升序排列
+        assertThat(todosInRange).allMatch(todo -> 
+            !todo.getDueDate().isBefore(startDate) && 
+            !todo.getDueDate().isAfter(endDate));
+    }
+    
+    @Test
+    @DisplayName("查詢日期範圍內的待辦事項時不同使用者應該回傳各自的結果")
+    void test_findByUserAndDueDateBetween_whenMultipleUsers_then_shouldReturnUserSpecificResults() {
+        // Given - 為不同使用者建立相同日期範圍的待辦事項
+        LocalDate targetDate = LocalDate.now().plusDays(3);
+        TodoItem testUserTodo = new TodoItem("測試使用者任務", "描述", targetDate, testUser);
+        TodoItem anotherUserTodo = new TodoItem("其他使用者任務", "描述", targetDate, anotherUser);
+        
+        entityManager.persistAndFlush(testUserTodo);
+        entityManager.persistAndFlush(anotherUserTodo);
+        
+        // When - 查詢各自在日期範圍內的待辦事項
+        LocalDate startDate = LocalDate.now().plusDays(2);
+        LocalDate endDate = LocalDate.now().plusDays(4);
+        List<TodoItem> testUserTodos = todoItemRepository.findByUserAndDueDateBetween("testuser", startDate, endDate);
+        List<TodoItem> anotherUserTodos = todoItemRepository.findByUserAndDueDateBetween("anotheruser", startDate, endDate);
+        
+        // Then - 驗證資料隔離
+        assertThat(testUserTodos).hasSize(1);
+        assertThat(testUserTodos.get(0).getTitle()).isEqualTo("測試使用者任務");
+        
+        assertThat(anotherUserTodos).hasSize(1);
+        assertThat(anotherUserTodos.get(0).getTitle()).isEqualTo("其他使用者任務");
+    }
+    
+    @Test
+    @DisplayName("統計使用者總延期次數時應該回傳正確數量")
+    void test_countTotalExtensionsByUsername_whenExtensionsExist_then_shouldReturnCorrectCount() {
+        // Given - 建立有延期記錄的待辦事項
+        TodoItem todoWithExtensions1 = new TodoItem("延期任務1", "描述", LocalDate.now().plusDays(1), testUser);
+        todoWithExtensions1.setExtensionCount(2); // 延期2次
+        
+        TodoItem todoWithExtensions2 = new TodoItem("延期任務2", "描述", LocalDate.now().plusDays(2), testUser);
+        todoWithExtensions2.setExtensionCount(3); // 延期3次
+        
+        TodoItem todoWithoutExtensions = new TodoItem("無延期任務", "描述", LocalDate.now().plusDays(3), testUser);
+        // extensionCount 預設為 0
+        
+        // 為另一個使用者建立有延期記錄的待辦事項
+        TodoItem anotherUserTodo = new TodoItem("其他使用者延期任務", "描述", LocalDate.now().plusDays(1), anotherUser);
+        anotherUserTodo.setExtensionCount(1);
+        
+        entityManager.persistAndFlush(todoWithExtensions1);
+        entityManager.persistAndFlush(todoWithExtensions2);
+        entityManager.persistAndFlush(todoWithoutExtensions);
+        entityManager.persistAndFlush(anotherUserTodo);
+        
+        // When - 統計使用者的總延期次數
+        Long testUserExtensions = todoItemRepository.countTotalExtensionsByUsername("testuser");
+        Long anotherUserExtensions = todoItemRepository.countTotalExtensionsByUsername("anotheruser");
+        
+        // Then - 驗證統計結果
+        assertThat(testUserExtensions).isEqualTo(5L); // 2 + 3 + 0 = 5
+        assertThat(anotherUserExtensions).isEqualTo(1L);
+    }
+    
+    @Test
+    @DisplayName("統計沒有延期記錄的使用者總延期次數時應該回傳0")
+    void test_countTotalExtensionsByUsername_whenNoExtensions_then_shouldReturnZero() {
+        // Given - 建立沒有延期記錄的待辦事項
+        TodoItem todoWithoutExtensions1 = new TodoItem("無延期任務1", "描述", LocalDate.now().plusDays(1), testUser);
+        TodoItem todoWithoutExtensions2 = new TodoItem("無延期任務2", "描述", LocalDate.now().plusDays(2), testUser);
+        
+        entityManager.persistAndFlush(todoWithoutExtensions1);
+        entityManager.persistAndFlush(todoWithoutExtensions2);
+        
+        // When - 統計使用者的總延期次數
+        Long totalExtensions = todoItemRepository.countTotalExtensionsByUsername("testuser");
+        
+        // Then - 驗證統計結果應該為0
+        assertThat(totalExtensions).isEqualTo(0L);
+    }
+    
+    @Test
+    @DisplayName("統計不存在使用者的總延期次數時應該回傳0")
+    void test_countTotalExtensionsByUsername_whenUserNotExists_then_shouldReturnZero() {
+        // Given - 沒有為該使用者建立任何待辦事項
+        
+        // When - 統計不存在使用者的總延期次數
+        Long totalExtensions = todoItemRepository.countTotalExtensionsByUsername("nonexistentuser");
+        
+        // Then - 驗證統計結果應該為0
+        assertThat(totalExtensions).isEqualTo(0L);
+    }
 }

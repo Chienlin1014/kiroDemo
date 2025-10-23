@@ -102,4 +102,43 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
      * @return 已完成的待辦事項數量
      */
     long countByUserAndCompleted(User user, boolean completed);
+    
+    /**
+     * 查詢使用者三天內到期且未完成的待辦事項（符合延期條件）
+     * @param username 使用者名稱
+     * @param startDate 開始日期（通常是今天）
+     * @param endDate 結束日期（通常是今天加3天）
+     * @return 符合延期條件的待辦事項列表
+     */
+    @Query("SELECT t FROM TodoItem t WHERE t.user.username = :username " +
+           "AND t.completed = false " +
+           "AND t.dueDate >= :startDate " +
+           "AND t.dueDate <= :endDate " +
+           "ORDER BY t.dueDate ASC")
+    List<TodoItem> findEligibleForExtensionByUsername(@Param("username") String username, 
+                                                     @Param("startDate") LocalDate startDate,
+                                                     @Param("endDate") LocalDate endDate);
+    
+    /**
+     * 查詢使用者指定日期範圍內的待辦事項
+     * @param username 使用者名稱
+     * @param startDate 開始日期
+     * @param endDate 結束日期
+     * @return 指定日期範圍內的待辦事項列表
+     */
+    @Query("SELECT t FROM TodoItem t WHERE t.user.username = :username " +
+           "AND t.dueDate BETWEEN :startDate AND :endDate " +
+           "ORDER BY t.dueDate ASC")
+    List<TodoItem> findByUserAndDueDateBetween(
+        @Param("username") String username,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate);
+    
+    /**
+     * 統計使用者的總延期次數
+     * @param username 使用者名稱
+     * @return 總延期次數，如果沒有延期記錄則返回0
+     */
+    @Query("SELECT COALESCE(SUM(t.extensionCount), 0) FROM TodoItem t WHERE t.user.username = :username")
+    Long countTotalExtensionsByUsername(@Param("username") String username);
 }

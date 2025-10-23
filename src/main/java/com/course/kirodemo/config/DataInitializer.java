@@ -336,6 +336,11 @@ public class DataInitializer implements CommandLineRunner {
         todoItem.setCompleted(completed);
         todoItem.setCompletedAt(completedAt);
         
+        // 初始化延期相關欄位
+        todoItem.setExtensionCount(0);
+        todoItem.setLastExtendedAt(null);
+        todoItem.setOriginalDueDate(null); // 將在首次延期時設定
+        
         return todoItemRepository.save(todoItem);
     }
 }

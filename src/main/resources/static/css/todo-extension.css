@@ -1,0 +1,322 @@
+/* 待辦事項延期功能樣式 */
+
+/* 延期按鈕樣式 */
+.extend-btn {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+    transition: all 0.2s ease;
+}
+
+.extend-btn:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #212529;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.extend-btn:focus {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #212529;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+}
+
+.extend-btn:active {
+    background-color: #d39e00;
+    border-color: #c69500;
+    transform: translateY(0);
+}
+
+/* 快速選擇按鈕群組樣式 */
+.quick-select {
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.quick-select:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.quick-select.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+.quick-select.active:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+/* 快速選擇按鈕群組容器 */
+.btn-group .quick-select {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 日期顯示樣式 */
+.due-date {
+    font-size: 0.9em;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.due-date.near-due {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* 新到期日預覽樣式 */
+#newDueDate {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #d1edff;
+    border: 1px solid #b6d7ff;
+    border-radius: 0.375rem;
+    font-family: 'Courier New', monospace;
+}
+
+#newDueDate:empty {
+    display: none;
+}
+
+/* 模態框樣式調整 */
+#extendModal .modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#extendModal .modal-title {
+    color: #495057;
+    font-weight: 600;
+}
+
+#extendModal .modal-body {
+    padding: 1.5rem;
+    background-color: #ffffff;
+}
+
+#extendModal .modal-footer {
+    background-color: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+    padding: 1rem 1.5rem;
+}
+
+/* 表單標籤樣式 */
+#extendModal .form-label {
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+/* 輸入欄位樣式 */
+#extensionDays {
+    border: 2px solid #ced4da;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+#extensionDays:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+#extensionDays.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+/* 錯誤訊息樣式 */
+#errorMessage {
+    border-left: 4px solid #dc3545;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 成功訊息樣式 */
+.alert-success.position-fixed {
+    animation: slideInRight 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 表單說明文字樣式 */
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+#datePreviewHelp {
+    color: #198754;
+    font-style: italic;
+    font-size: 0.875rem;
+}
+
+/* 模態框按鈕樣式 */
+#confirmExtend {
+    background-color: #198754;
+    border-color: #198754;
+    font-weight: 500;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.2s ease;
+}
+
+#confirmExtend:hover {
+    background-color: #157347;
+    border-color: #146c43;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#confirmExtend:disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* 取消按鈕樣式 */
+.modal-footer .btn-secondary {
+    font-weight: 500;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.2s ease;
+}
+
+.modal-footer .btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 響應式設計 */
+@media (max-width: 576px) {
+    #extendModal .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    #extendModal .modal-body {
+        padding: 1rem;
+    }
+    
+    .btn-group .quick-select {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .alert-success.position-fixed {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+    }
+}
+
+/* 載入動畫 */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 工具提示樣式增強 */
+.extend-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 0.25rem;
+}
+
+/* 焦點可見性增強 */
+.extend-btn:focus-visible,
+.quick-select:focus-visible,
+#confirmExtend:focus-visible {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+/* 高對比度模式支援 */
+@media (prefers-contrast: high) {
+    .extend-btn {
+        border-width: 2px;
+    }
+    
+    #extensionDays {
+        border-width: 2px;
+    }
+    
+    .quick-select {
+        border-width: 2px;
+    }
+}
+
+/* 減少動畫偏好支援 */
+@media (prefers-reduced-motion: reduce) {
+    .extend-btn,
+    .quick-select,
+    #confirmExtend,
+    .modal-footer .btn-secondary,
+    #extensionDays {
+        transition: none;
+    }
+    
+    .extend-btn:hover,
+    .quick-select:hover,
+    #confirmExtend:hover,
+    .modal-footer .btn-secondary:hover {
+        transform: none;
+    }
+    
+    @keyframes slideIn,
+    @keyframes slideInRight,
+    @keyframes spin {
+        animation-duration: 0.01ms !important;
+    }
+}
