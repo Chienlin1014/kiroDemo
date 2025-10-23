@@ -16,7 +16,7 @@
 
 #### 測試方法命名規範
 ```
-test_<method>_when<situation>_then_<test_result>
+test_<method>_when_<situation>_then_<test_result>
 ```
 
 **命名規則說明：**
