@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /**
  * TodoItem 實體類別
@@ -51,6 +52,24 @@ public class TodoItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+    
+    /**
+     * 延期次數記錄
+     */
+    @Column(name = "extension_count", nullable = false)
+    private int extensionCount = 0;
+    
+    /**
+     * 最後延期時間
+     */
+    @Column(name = "last_extended_at")
+    private LocalDateTime lastExtendedAt;
+    
+    /**
+     * 原始到期日（首次設定的到期日）
+     */
+    @Column(name = "original_due_date")
+    private LocalDate originalDueDate;
     
     // 預設建構子
     public TodoItem() {}
@@ -141,6 +160,30 @@ public class TodoItem {
         this.user = user;
     }
     
+    public int getExtensionCount() {
+        return extensionCount;
+    }
+    
+    public void setExtensionCount(int extensionCount) {
+        this.extensionCount = extensionCount;
+    }
+    
+    public LocalDateTime getLastExtendedAt() {
+        return lastExtendedAt;
+    }
+    
+    public void setLastExtendedAt(LocalDateTime lastExtendedAt) {
+        this.lastExtendedAt = lastExtendedAt;
+    }
+    
+    public LocalDate getOriginalDueDate() {
+        return originalDueDate;
+    }
+    
+    public void setOriginalDueDate(LocalDate originalDueDate) {
+        this.originalDueDate = originalDueDate;
+    }
+    
     // 業務邏輯方法：標記為完成
     public void markAsCompleted() {
         this.completed = true;
@@ -177,6 +220,48 @@ public class TodoItem {
         }
         LocalDate threeDaysFromNow = LocalDate.now().plusDays(3);
         return dueDate.isBefore(threeDaysFromNow) || dueDate.isEqual(threeDaysFromNow);
+    }
+    
+    /**
+     * 檢查是否符合延期條件（未完成且三天內到期）
+     * @return true 如果符合延期條件，false 否則
+     */
+    public boolean isEligibleForExtension() {
+        return !this.completed && 
+               this.dueDate != null && 
+               this.dueDate.isAfter(LocalDate.now().minusDays(1)) && 
+               this.dueDate.isBefore(LocalDate.now().plusDays(4));
+    }
+    
+    /**
+     * 執行延期操作
+     * @param days 延期天數，必須為正數
+     * @throws IllegalArgumentException 如果延期天數不是正數
+     */
+    public void extendDueDate(int days) {
+        if (days <= 0) {
+            throw new IllegalArgumentException("延期天數必須為正數");
+        }
+        
+        // 首次延期時記錄原始到期日
+        if (this.originalDueDate == null) {
+            this.originalDueDate = this.dueDate;
+        }
+        
+        this.dueDate = this.dueDate.plusDays(days);
+        this.extensionCount++;
+        this.lastExtendedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * 取得總延期天數
+     * @return 總延期天數，如果沒有延期過則返回0
+     */
+    public long getTotalExtensionDays() {
+        if (originalDueDate == null) {
+            return 0;
+        }
+        return ChronoUnit.DAYS.between(originalDueDate, dueDate);
     }
     
     @Override

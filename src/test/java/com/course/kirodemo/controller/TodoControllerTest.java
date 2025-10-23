@@ -1,11 +1,14 @@
 package com.course.kirodemo.controller;
 
 import com.course.kirodemo.dto.CreateTodoRequest;
+import com.course.kirodemo.dto.ExtendTodoRequest;
 import com.course.kirodemo.dto.UpdateTodoRequest;
 import com.course.kirodemo.entity.TodoItem;
 import com.course.kirodemo.entity.User;
 import com.course.kirodemo.exception.TodoNotFoundException;
 import com.course.kirodemo.exception.UnauthorizedAccessException;
+import com.course.kirodemo.service.DateValidationService;
+import com.course.kirodemo.service.TodoExtensionService;
 import com.course.kirodemo.service.TodoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -43,6 +47,12 @@ class TodoControllerTest {
 
     @MockBean
     private TodoService todoService;
+    
+    @MockBean
+    private TodoExtensionService extensionService;
+    
+    @MockBean
+    private DateValidationService dateValidationService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -376,5 +386,264 @@ class TodoControllerTest {
 
         mockMvc.perform(post("/todos/1/toggle").with(csrf()))
                 .andExpect(status().isUnauthorized());
+                
+        // 延期相關端點也需要認證
+        mockMvc.perform(get("/todos/1/extend"))
+                .andExpect(status().isUnauthorized());
+                
+        mockMvc.perform(post("/todos/1/extend").with(csrf()))
+                .andExpect(status().isUnauthorized());
+                
+        mockMvc.perform(get("/todos/1/extend/preview"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // === 延期功能測試 ===
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("GET /todos/{id}/extend 當待辦事項符合延期條件時應該回傳延期表單資料")
+    void test_getExtensionForm_whenTodoEligibleForExtension_then_shouldReturnFormData() throws Exception {
+        // Given
+        TodoItem eligibleTodo = new TodoItem();
+        eligibleTodo.setId(1L);
+        eligibleTodo.setTitle("即將到期的任務");
+        eligibleTodo.setDueDate(LocalDate.now().plusDays(2));
+        eligibleTodo.setCompleted(false);
+        
+        when(todoService.findUserTodo(1L, "testuser")).thenReturn(Optional.of(eligibleTodo));
+        when(extensionService.isEligibleForExtension(eligibleTodo)).thenReturn(true);
+
+        // When & Then
+        mockMvc.perform(get("/todos/1/extend"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.todoId").value(1L))
+                .andExpect(jsonPath("$.title").value("即將到期的任務"))
+                .andExpect(jsonPath("$.currentDueDate").exists())
+                .andExpect(jsonPath("$.maxExtensionDays").value(365));
+
+        verify(todoService).findUserTodo(1L, "testuser");
+        verify(extensionService).isEligibleForExtension(eligibleTodo);
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("GET /todos/{id}/extend 當待辦事項不符合延期條件時應該回傳錯誤")
+    void test_getExtensionForm_whenTodoNotEligibleForExtension_then_shouldReturnError() throws Exception {
+        // Given
+        TodoItem ineligibleTodo = new TodoItem();
+        ineligibleTodo.setId(1L);
+        ineligibleTodo.setCompleted(true); // 已完成
+        
+        when(todoService.findUserTodo(1L, "testuser")).thenReturn(Optional.of(ineligibleTodo));
+        when(extensionService.isEligibleForExtension(ineligibleTodo)).thenReturn(false);
+
+        // When & Then
+        mockMvc.perform(get("/todos/1/extend"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("此待辦事項不符合延期條件"));
+
+        verify(todoService).findUserTodo(1L, "testuser");
+        verify(extensionService).isEligibleForExtension(ineligibleTodo);
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("GET /todos/{id}/extend 當待辦事項不存在時應該回傳錯誤")
+    void test_getExtensionForm_whenTodoNotExists_then_shouldReturnError() throws Exception {
+        // Given
+        when(todoService.findUserTodo(999L, "testuser")).thenReturn(Optional.empty());
+
+        // When & Then
+        mockMvc.perform(get("/todos/999/extend"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("待辦事項不存在"));
+
+        verify(todoService).findUserTodo(999L, "testuser");
+        verify(extensionService, never()).isEligibleForExtension(any());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("POST /todos/{id}/extend 當延期請求有效時應該成功延期")
+    void test_extendTodo_whenValidRequest_then_shouldExtendSuccessfully() throws Exception {
+        // Given
+        ExtendTodoRequest request = new ExtendTodoRequest(1L, 3);
+        
+        TodoItem extendedTodo = new TodoItem();
+        extendedTodo.setId(1L);
+        extendedTodo.setTitle("測試任務");
+        extendedTodo.setDueDate(LocalDate.now().plusDays(5)); // 延期後的日期
+        extendedTodo.setOriginalDueDate(LocalDate.now().plusDays(2)); // 原始日期
+        extendedTodo.setExtensionCount(1);
+        
+        when(extensionService.extendTodo(1L, 3, "testuser")).thenReturn(extendedTodo);
+
+        // When & Then
+        mockMvc.perform(post("/todos/1/extend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("延期成功"))
+                .andExpect(jsonPath("$.todoId").value(1L))
+                .andExpect(jsonPath("$.newDueDate").exists())
+                .andExpect(jsonPath("$.originalDueDate").exists())
+                .andExpect(jsonPath("$.totalExtensionDays").value(3));
+
+        verify(extensionService).extendTodo(1L, 3, "testuser");
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("POST /todos/{id}/extend 當延期天數無效時應該回傳驗證錯誤")
+    void test_extendTodo_whenInvalidExtensionDays_then_shouldReturnValidationError() throws Exception {
+        // Given
+        ExtendTodoRequest request = new ExtendTodoRequest(1L, -1); // 無效的負數
+
+        // When & Then
+        mockMvc.perform(post("/todos/1/extend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(containsString("輸入驗證失敗")));
+
+        verify(extensionService, never()).extendTodo(anyLong(), anyInt(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("POST /todos/{id}/extend 當路徑ID與請求ID不一致時應該回傳錯誤")
+    void test_extendTodo_whenPathIdMismatch_then_shouldReturnError() throws Exception {
+        // Given
+        ExtendTodoRequest request = new ExtendTodoRequest(2L, 3); // 請求ID為2，但路徑ID為1
+
+        // When & Then
+        mockMvc.perform(post("/todos/1/extend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("請求參數不一致"));
+
+        verify(extensionService, never()).extendTodo(anyLong(), anyInt(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("POST /todos/{id}/extend 當待辦事項不存在時應該回傳錯誤")
+    void test_extendTodo_whenTodoNotExists_then_shouldReturnError() throws Exception {
+        // Given
+        ExtendTodoRequest request = new ExtendTodoRequest(999L, 3);
+        
+        when(extensionService.extendTodo(999L, 3, "testuser"))
+                .thenThrow(new TodoNotFoundException("待辦事項不存在"));
+
+        // When & Then
+        mockMvc.perform(post("/todos/999/extend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("待辦事項不存在"));
+
+        verify(extensionService).extendTodo(999L, 3, "testuser");
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("POST /todos/{id}/extend 當使用者無權限時應該回傳403錯誤")
+    void test_extendTodo_whenUnauthorized_then_shouldReturn403() throws Exception {
+        // Given
+        ExtendTodoRequest request = new ExtendTodoRequest(1L, 3);
+        
+        when(extensionService.extendTodo(1L, 3, "testuser"))
+                .thenThrow(new UnauthorizedAccessException("無權限存取此待辦事項"));
+
+        // When & Then
+        mockMvc.perform(post("/todos/1/extend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("無權限存取此待辦事項"));
+
+        verify(extensionService).extendTodo(1L, 3, "testuser");
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("GET /todos/{id}/extend/preview 當延期天數有效時應該回傳預覽資料")
+    void test_previewExtension_whenValidDays_then_shouldReturnPreviewData() throws Exception {
+        // Given
+        TodoItem todo = new TodoItem();
+        todo.setId(1L);
+        todo.setDueDate(LocalDate.now().plusDays(2));
+        
+        LocalDate newDueDate = LocalDate.now().plusDays(5);
+        
+        when(todoService.findUserTodo(1L, "testuser")).thenReturn(Optional.of(todo));
+        doNothing().when(extensionService).validateExtensionDays(3);
+        when(dateValidationService.calculateNewDueDate(todo.getDueDate(), 3)).thenReturn(newDueDate);
+
+        // When & Then
+        mockMvc.perform(get("/todos/1/extend/preview")
+                .param("days", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentDueDate").exists())
+                .andExpect(jsonPath("$.newDueDate").exists())
+                .andExpect(jsonPath("$.extensionDays").value(3));
+
+        verify(todoService).findUserTodo(1L, "testuser");
+        verify(extensionService).validateExtensionDays(3);
+        verify(dateValidationService).calculateNewDueDate(todo.getDueDate(), 3);
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("GET /todos/{id}/extend/preview 當延期天數無效時應該回傳錯誤")
+    void test_previewExtension_whenInvalidDays_then_shouldReturnError() throws Exception {
+        // Given
+        TodoItem todo = new TodoItem();
+        todo.setId(1L);
+        todo.setDueDate(LocalDate.now().plusDays(2));
+        
+        when(todoService.findUserTodo(1L, "testuser")).thenReturn(Optional.of(todo));
+        doThrow(new IllegalArgumentException("延期天數必須為正數"))
+                .when(extensionService).validateExtensionDays(-1);
+
+        // When & Then
+        mockMvc.perform(get("/todos/1/extend/preview")
+                .param("days", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("延期天數必須為正數"));
+
+        verify(todoService).findUserTodo(1L, "testuser");
+        verify(extensionService).validateExtensionDays(-1);
+        verify(dateValidationService, never()).calculateNewDueDate(any(), anyInt());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    @DisplayName("GET /todos/{id}/extend/preview 當待辦事項不存在時應該回傳錯誤")
+    void test_previewExtension_whenTodoNotExists_then_shouldReturnError() throws Exception {
+        // Given
+        when(todoService.findUserTodo(999L, "testuser")).thenReturn(Optional.empty());
+
+        // When & Then
+        mockMvc.perform(get("/todos/999/extend/preview")
+                .param("days", "3"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("待辦事項不存在"));
+
+        verify(todoService).findUserTodo(999L, "testuser");
+        verify(extensionService, never()).validateExtensionDays(anyInt());
+        verify(dateValidationService, never()).calculateNewDueDate(any(), anyInt());
     }
 }

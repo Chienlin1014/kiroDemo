@@ -1,5 +1,6 @@
 package com.course.kirodemo.exception;
 
+import com.course.kirodemo.dto.ExtendTodoResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -121,9 +123,12 @@ class GlobalExceptionHandlerTest {
         
         when(exception.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getFieldErrors()).thenReturn(Arrays.asList(fieldError1, fieldError2));
+        when(request.getRequestURI()).thenReturn("/todos/create");
+        when(request.getHeader("X-Requested-With")).thenReturn(null);
+        when(request.getHeader("Accept")).thenReturn("text/html");
         
         // When (當) - 執行被測試的行為
-        String result = globalExceptionHandler.handleValidationException(exception, model, request);
+        Object result = globalExceptionHandler.handleValidationException(exception, model, request);
         
         // Then (那麼) - 驗證預期結果
         assertEquals("error/error", result);
@@ -205,5 +210,66 @@ class GlobalExceptionHandlerTest {
         verify(model).addAttribute("error", "系統發生未預期的錯誤，請稍後再試");
         verify(model).addAttribute("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         verify(model).addAttribute("message", exception.getMessage());
+    }
+    
+    @Test
+    @DisplayName("處理無效延期異常時應該回傳 JSON 錯誤回應")
+    void test_handleInvalidExtension_whenInvalidExtensionException_then_shouldReturnJsonErrorResponse() {
+        // Given (給定) - 設定測試前置條件
+        InvalidExtensionException exception = InvalidExtensionException.forInvalidDays(-1);
+        when(request.getRequestURI()).thenReturn("/todos/1/extend");
+        
+        // When (當) - 執行被測試的行為
+        ResponseEntity<ExtendTodoResponse> result = globalExceptionHandler.handleInvalidExtension(exception, request);
+        
+        // Then (那麼) - 驗證預期結果
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertNotNull(result.getBody());
+        assertFalse(result.getBody().isSuccess());
+        assertTrue(result.getBody().getMessage().contains("延期天數無效"));
+    }
+    
+    @Test
+    @DisplayName("處理不允許延期異常時應該回傳 JSON 錯誤回應")
+    void test_handleExtensionNotAllowed_whenExtensionNotAllowedException_then_shouldReturnJsonErrorResponse() {
+        // Given (給定) - 設定測試前置條件
+        ExtensionNotAllowedException exception = ExtensionNotAllowedException.forCompletedTodo(1L);
+        when(request.getRequestURI()).thenReturn("/todos/1/extend");
+        
+        // When (當) - 執行被測試的行為
+        ResponseEntity<ExtendTodoResponse> result = globalExceptionHandler.handleExtensionNotAllowed(exception, request);
+        
+        // Then (那麼) - 驗證預期結果
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertNotNull(result.getBody());
+        assertFalse(result.getBody().isSuccess());
+        assertEquals(Long.valueOf(1L), result.getBody().getTodoId());
+        assertTrue(result.getBody().getMessage().contains("待辦事項已完成"));
+    }
+    
+    @Test
+    @DisplayName("處理延期相關的表單驗證異常時應該回傳 JSON 回應")
+    void test_handleValidationException_whenExtensionAjaxRequest_then_shouldReturnJsonResponse() {
+        // Given (給定) - 設定測試前置條件
+        MethodArgumentNotValidException exception = mock(MethodArgumentNotValidException.class);
+        FieldError fieldError = new FieldError("extendTodoRequest", "extensionDays", "延期天數必須為正數");
+        
+        when(exception.getBindingResult()).thenReturn(bindingResult);
+        when(bindingResult.getFieldErrors()).thenReturn(Arrays.asList(fieldError));
+        when(request.getRequestURI()).thenReturn("/todos/1/extend");
+        when(request.getHeader("X-Requested-With")).thenReturn("XMLHttpRequest");
+        when(request.getHeader("Accept")).thenReturn("application/json");
+        
+        // When (當) - 執行被測試的行為
+        Object result = globalExceptionHandler.handleValidationException(exception, model, request);
+        
+        // Then (那麼) - 驗證預期結果
+        assertTrue(result instanceof ResponseEntity);
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ExtendTodoResponse> responseEntity = (ResponseEntity<ExtendTodoResponse>) result;
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+        assertFalse(responseEntity.getBody().isSuccess());
+        assertTrue(responseEntity.getBody().getMessage().contains("輸入驗證失敗"));
     }
 }

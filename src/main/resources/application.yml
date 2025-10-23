@@ -58,6 +58,9 @@ spring:
   mvc:
     favicon:
       enabled: false
+    hiddenmethod:
+      filter:
+        enabled: true
 
 # 日誌配置
 logging:

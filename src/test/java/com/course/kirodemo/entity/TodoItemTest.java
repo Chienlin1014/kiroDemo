@@ -340,4 +340,182 @@ class TodoItemTest {
         assertEquals("標題", todoItemWithEmptyDescription.getTitle());
         assertEquals("", todoItemWithEmptyDescription.getDescription());
     }
+
+    // 延期功能測試
+
+    @Test
+    @DisplayName("未完成且三天內到期的待辦事項應該符合延期條件")
+    void test_isEligibleForExtension_whenIncompleteAndDueWithinThreeDays_then_shouldReturnTrue() {
+        // Given
+        TodoItem dueTomorrowItem = new TodoItem("明天到期", "描述", LocalDate.now().plusDays(1));
+        TodoItem dueInTwoDaysItem = new TodoItem("後天到期", "描述", LocalDate.now().plusDays(2));
+        TodoItem dueInThreeDaysItem = new TodoItem("三天後到期", "描述", LocalDate.now().plusDays(3));
+        TodoItem dueTodayItem = new TodoItem("今天到期", "描述", LocalDate.now());
+        
+        // When & Then
+        assertTrue(dueTomorrowItem.isEligibleForExtension());
+        assertTrue(dueInTwoDaysItem.isEligibleForExtension());
+        assertTrue(dueInThreeDaysItem.isEligibleForExtension());
+        assertTrue(dueTodayItem.isEligibleForExtension());
+    }
+
+    @Test
+    @DisplayName("已完成的待辦事項不應該符合延期條件")
+    void test_isEligibleForExtension_whenCompleted_then_shouldReturnFalse() {
+        // Given
+        TodoItem completedItem = new TodoItem("已完成任務", "描述", LocalDate.now().plusDays(1));
+        completedItem.markAsCompleted();
+        
+        // When
+        boolean result = completedItem.isEligibleForExtension();
+        
+        // Then
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("超過三天後到期的待辦事項不應該符合延期條件")
+    void test_isEligibleForExtension_whenDueAfterThreeDays_then_shouldReturnFalse() {
+        // Given
+        TodoItem dueInFourDaysItem = new TodoItem("四天後到期", "描述", LocalDate.now().plusDays(4));
+        TodoItem dueInWeekItem = new TodoItem("一週後到期", "描述", LocalDate.now().plusDays(7));
+        
+        // When & Then
+        assertFalse(dueInFourDaysItem.isEligibleForExtension());
+        assertFalse(dueInWeekItem.isEligibleForExtension());
+    }
+
+    @Test
+    @DisplayName("昨天到期的待辦事項不應該符合延期條件")
+    void test_isEligibleForExtension_whenOverdue_then_shouldReturnFalse() {
+        // Given
+        TodoItem overdueItem = new TodoItem("逾期任務", "描述", LocalDate.now().minusDays(1));
+        
+        // When
+        boolean result = overdueItem.isEligibleForExtension();
+        
+        // Then
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("延期操作應該正確更新到期日和延期記錄")
+    void test_extendDueDate_whenValidDays_then_shouldUpdateDueDateAndExtensionRecord() {
+        // Given
+        LocalDate originalDueDate = LocalDate.now().plusDays(1);
+        TodoItem todoItem = new TodoItem("測試任務", "描述", originalDueDate);
+        int extensionDays = 3;
+        
+        // When
+        todoItem.extendDueDate(extensionDays);
+        
+        // Then
+        assertEquals(originalDueDate.plusDays(extensionDays), todoItem.getDueDate());
+        assertEquals(originalDueDate, todoItem.getOriginalDueDate());
+        assertEquals(1, todoItem.getExtensionCount());
+        assertNotNull(todoItem.getLastExtendedAt());
+        assertTrue(todoItem.getLastExtendedAt().isBefore(LocalDateTime.now().plusSeconds(1)));
+    }
+
+    @Test
+    @DisplayName("延期天數為負數時應該拋出異常")
+    void test_extendDueDate_whenNegativeDays_then_shouldThrowException() {
+        // Given
+        TodoItem todoItem = new TodoItem("測試任務", "描述", LocalDate.now().plusDays(1));
+        int negativeDays = -1;
+        
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
+            () -> todoItem.extendDueDate(negativeDays));
+        assertEquals("延期天數必須為正數", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("延期天數為零時應該拋出異常")
+    void test_extendDueDate_whenZeroDays_then_shouldThrowException() {
+        // Given
+        TodoItem todoItem = new TodoItem("測試任務", "描述", LocalDate.now().plusDays(1));
+        int zeroDays = 0;
+        
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
+            () -> todoItem.extendDueDate(zeroDays));
+        assertEquals("延期天數必須為正數", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("多次延期應該累計延期次數和總天數")
+    void test_multipleExtensions_whenExtendedMultipleTimes_then_shouldAccumulateCountAndDays() {
+        // Given
+        LocalDate originalDueDate = LocalDate.now().plusDays(1);
+        TodoItem todoItem = new TodoItem("測試任務", "描述", originalDueDate);
+        
+        // When
+        todoItem.extendDueDate(2); // 第一次延期2天
+        LocalDateTime firstExtensionTime = todoItem.getLastExtendedAt();
+        
+        // 稍微等待以確保時間戳不同
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        todoItem.extendDueDate(3); // 第二次延期3天
+        
+        // Then
+        assertEquals(originalDueDate.plusDays(5), todoItem.getDueDate()); // 總共延期5天
+        assertEquals(originalDueDate, todoItem.getOriginalDueDate()); // 原始日期不變
+        assertEquals(2, todoItem.getExtensionCount()); // 延期次數為2
+        assertTrue(todoItem.getLastExtendedAt().isAfter(firstExtensionTime)); // 最後延期時間更新
+        assertEquals(5, todoItem.getTotalExtensionDays()); // 總延期天數為5
+    }
+
+    @Test
+    @DisplayName("沒有延期過的待辦事項總延期天數應該為0")
+    void test_getTotalExtensionDays_whenNoExtension_then_shouldReturnZero() {
+        // Given
+        TodoItem todoItem = new TodoItem("測試任務", "描述", LocalDate.now().plusDays(1));
+        
+        // When
+        long totalDays = todoItem.getTotalExtensionDays();
+        
+        // Then
+        assertEquals(0, totalDays);
+        assertNull(todoItem.getOriginalDueDate());
+        assertEquals(0, todoItem.getExtensionCount());
+    }
+
+    @Test
+    @DisplayName("應該能夠設定和取得延期相關屬性")
+    void test_extensionSettersAndGetters_whenCalledWithValidValues_then_shouldSetAndReturnCorrectValues() {
+        // Given
+        int extensionCount = 3;
+        LocalDateTime lastExtendedAt = LocalDateTime.now();
+        LocalDate originalDueDate = LocalDate.now().plusDays(1);
+        
+        // When
+        todoItem.setExtensionCount(extensionCount);
+        todoItem.setLastExtendedAt(lastExtendedAt);
+        todoItem.setOriginalDueDate(originalDueDate);
+        
+        // Then
+        assertEquals(extensionCount, todoItem.getExtensionCount());
+        assertEquals(lastExtendedAt, todoItem.getLastExtendedAt());
+        assertEquals(originalDueDate, todoItem.getOriginalDueDate());
+    }
+
+    @Test
+    @DisplayName("延期後的待辦事項如果不再符合三天內到期條件應該返回false")
+    void test_isEligibleForExtension_whenExtendedBeyondThreeDays_then_shouldReturnFalse() {
+        // Given
+        TodoItem todoItem = new TodoItem("測試任務", "描述", LocalDate.now().plusDays(2));
+        assertTrue(todoItem.isEligibleForExtension()); // 延期前符合條件
+        
+        // When
+        todoItem.extendDueDate(5); // 延期5天，現在是7天後到期
+        
+        // Then
+        assertFalse(todoItem.isEligibleForExtension()); // 延期後不符合條件
+    }
 }

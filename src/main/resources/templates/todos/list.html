@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-TW" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout/base :: layout(~{::title}, ~{::#content})}">
+<html lang="zh-TW" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout(~{::title}, ~{::#content})}">
+
 <head>
     <title>待辦事項列表</title>
+    <link th:href="@{/css/todo-extension.css}" rel="stylesheet">
 </head>
+
 <body>
     <div id="content">
         <!-- 頁面標題和操作按鈕 -->
@@ -23,20 +25,20 @@
                     <i class="bi bi-sort-down me-1"></i>排序方式
                 </h6>
                 <div class="btn-group" role="group">
-                    <a th:href="@{/todos(sortBy='CREATED_AT_DESC')}" 
-                       th:class="${sortBy == 'CREATED_AT_DESC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                    <a th:href="@{/todos(sortBy='CREATED_AT_DESC')}"
+                        th:class="${sortBy == 'CREATED_AT_DESC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
                         <i class="bi bi-calendar-plus me-1"></i>建立時間 (新→舊)
                     </a>
-                    <a th:href="@{/todos(sortBy='CREATED_AT_ASC')}" 
-                       th:class="${sortBy == 'CREATED_AT_ASC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                    <a th:href="@{/todos(sortBy='CREATED_AT_ASC')}"
+                        th:class="${sortBy == 'CREATED_AT_ASC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
                         <i class="bi bi-calendar-plus me-1"></i>建立時間 (舊→新)
                     </a>
-                    <a th:href="@{/todos(sortBy='DUE_DATE_ASC')}" 
-                       th:class="${sortBy == 'DUE_DATE_ASC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                    <a th:href="@{/todos(sortBy='DUE_DATE_ASC')}"
+                        th:class="${sortBy == 'DUE_DATE_ASC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
                         <i class="bi bi-calendar-event me-1"></i>預計完成日 (近→遠)
                     </a>
-                    <a th:href="@{/todos(sortBy='DUE_DATE_DESC')}" 
-                       th:class="${sortBy == 'DUE_DATE_DESC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
+                    <a th:href="@{/todos(sortBy='DUE_DATE_DESC')}"
+                        th:class="${sortBy == 'DUE_DATE_DESC'} ? 'btn btn-primary' : 'btn btn-outline-primary'">
                         <i class="bi bi-calendar-event me-1"></i>預計完成日 (遠→近)
                     </a>
                 </div>
@@ -52,72 +54,85 @@
                             <div class="row align-items-center">
                                 <!-- 完成狀態切換 -->
                                 <div class="col-auto">
-                                    <form th:action="@{/todos/{id}/toggle(id=${todo.id})}" method="post" class="d-inline">
-                                        <button type="submit" 
-                                                class="btn btn-link p-0 border-0"
-                                                th:title="${todo.completed} ? '標記為未完成' : '標記為已完成'">
-                                            <i th:class="${todo.completed} ? 'bi bi-check-square-fill text-success fs-4' : 'bi bi-square text-muted fs-4'"></i>
+                                    <form th:action="@{/todos/{id}/toggle(id=${todo.id})}" method="post"
+                                        class="d-inline">
+                                        <button type="submit" class="btn btn-link p-0 border-0"
+                                            th:title="${todo.completed} ? '標記為未完成' : '標記為已完成'">
+                                            <i
+                                                th:class="${todo.completed} ? 'bi bi-check-square-fill text-success fs-4' : 'bi bi-square text-muted fs-4'"></i>
                                         </button>
                                     </form>
                                 </div>
-                                
+
                                 <!-- 待辦事項內容 -->
                                 <div class="col">
                                     <h5 class="card-title todo-title mb-1" th:text="${todo.title}">待辦事項標題</h5>
-                                    <p class="card-text text-muted mb-2" th:if="${todo.description}" th:text="${todo.description}">待辦事項描述</p>
-                                    
+                                    <p class="card-text text-muted mb-2" th:if="${todo.description}"
+                                        th:text="${todo.description}">待辦事項描述</p>
+
                                     <!-- 時間資訊 -->
                                     <div class="d-flex flex-wrap gap-3">
                                         <small class="text-muted">
                                             <i class="bi bi-calendar-plus me-1"></i>
-                                            建立：<span th:text="${#temporals.format(todo.createdAt, 'yyyy/MM/dd HH:mm')}">2024/10/22 10:30</span>
+                                            建立：<span
+                                                th:text="${#temporals.format(todo.createdAt, 'yyyy/MM/dd HH:mm')}">2024/10/22
+                                                10:30</span>
                                         </small>
                                         <small class="text-muted">
                                             <i class="bi bi-calendar-event me-1"></i>
-                                            預計：<span th:text="${#temporals.format(todo.dueDate, 'yyyy/MM/dd')}">2024/10/25</span>
+                                            預計：<span class="due-date-display"
+                                                th:text="${#temporals.format(todo.dueDate, 'yyyy/MM/dd')}">2024/10/25</span>
                                         </small>
-                                        <small th:if="${todo.completed and todo.completedAt != null}" class="text-success">
+                                        <small th:if="${todo.completed and todo.completedAt != null}"
+                                            class="text-success">
                                             <i class="bi bi-check-circle me-1"></i>
-                                            完成：<span th:text="${#temporals.format(todo.completedAt, 'yyyy/MM/dd HH:mm')}">2024/10/24 15:30</span>
+                                            完成：<span
+                                                th:text="${#temporals.format(todo.completedAt, 'yyyy/MM/dd HH:mm')}">2024/10/24
+                                                15:30</span>
                                         </small>
                                     </div>
-                                    
+
                                     <!-- 逾期警告 -->
-                                    <div th:if="${!todo.completed and todo.dueDate.isBefore(T(java.time.LocalDate).now())}" 
-                                         class="mt-2">
+                                    <div th:if="${!todo.completed and todo.dueDate.isBefore(T(java.time.LocalDate).now())}"
+                                        class="mt-2">
                                         <span class="badge bg-danger">
                                             <i class="bi bi-exclamation-triangle me-1"></i>已逾期
                                         </span>
                                     </div>
-                                    
+
                                     <!-- 即將到期警告 -->
-                                    <div th:if="${!todo.completed and todo.dueDate.isEqual(T(java.time.LocalDate).now())}" 
-                                         class="mt-2">
+                                    <div th:if="${!todo.completed and todo.dueDate.isEqual(T(java.time.LocalDate).now())}"
+                                        class="mt-2">
                                         <span class="badge bg-warning text-dark">
                                             <i class="bi bi-clock me-1"></i>今日到期
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 <!-- 操作按鈕 -->
                                 <div class="col-auto">
                                     <div class="btn-group" role="group">
+                                        <!-- 延期按鈕 - 只在三天內到期且未完成時顯示 -->
+                                        <button th:if="${!todo.completed and todo.dueDate != null and 
+                                                        (todo.dueDate.isBefore(T(java.time.LocalDate).now().plusDays(4)) and 
+                                                         !todo.dueDate.isBefore(T(java.time.LocalDate).now()))}"
+                                            class="btn btn-warning btn-sm extend-btn" th:data-todo-id="${todo.id}"
+                                            th:data-todo-title="${todo.title}"
+                                            th:data-current-due-date="${todo.dueDate}" title="延期">
+                                            <i class="bi bi-clock"></i>
+                                        </button>
+
                                         <!-- 編輯按鈕 -->
-                                        <a th:href="@{/todos/{id}/edit(id=${todo.id})}" 
-                                           class="btn btn-outline-primary btn-sm"
-                                           title="編輯">
+                                        <a th:href="@{/todos/{id}/edit(id=${todo.id})}"
+                                            class="btn btn-outline-primary btn-sm" title="編輯">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        
+
                                         <!-- 刪除按鈕 -->
-                                        <form th:action="@{/todos/{id}(id=${todo.id})}" 
-                                              method="post" 
-                                              class="d-inline delete-form"
-                                              th:data-todo-title="${todo.title}">
+                                        <form th:action="@{/todos/{id}(id=${todo.id})}" method="post"
+                                            class="d-inline delete-form" th:data-todo-title="${todo.title}">
                                             <input type="hidden" name="_method" value="delete">
-                                            <button type="submit" 
-                                                    class="btn btn-outline-danger btn-sm"
-                                                    title="刪除">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="刪除">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -152,17 +167,94 @@
                             <small class="text-muted">總計</small>
                         </div>
                         <div class="col-md-4">
-                            <h5 class="text-success" th:with="completedCount=${#aggregates.sum(todos.![completed ? 1 : 0])}" th:text="${completedCount}">0</h5>
+                            <h5 class="text-success"
+                                th:with="completedCount=${#aggregates.sum(todos.![completed ? 1 : 0])}"
+                                th:text="${completedCount}">0</h5>
                             <small class="text-muted">已完成</small>
                         </div>
                         <div class="col-md-4">
-                            <h5 class="text-warning" th:with="completedCount=${#aggregates.sum(todos.![completed ? 1 : 0])}" th:text="${todos.size() - completedCount}">0</h5>
+                            <h5 class="text-warning"
+                                th:with="completedCount=${#aggregates.sum(todos.![completed ? 1 : 0])}"
+                                th:text="${todos.size() - completedCount}">0</h5>
                             <small class="text-muted">待完成</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- 延期模態框 -->
+        <div class="modal fade" id="extendModal" tabindex="-1" role="dialog" aria-labelledby="extendModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="extendModalLabel">
+                            <i class="bi bi-clock me-2"></i>延期待辦事項
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="extendForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">待辦事項：</label>
+                                <span id="todoTitle" class="text-primary fw-bold"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">當前到期日：</label>
+                                <span id="currentDueDate" class="text-info fw-bold"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="extensionDays" class="form-label fw-bold">延期天數：</label>
+                                <input type="number" class="form-control" id="extensionDays" name="extensionDays"
+                                    min="1" max="365" placeholder="請輸入延期天數" required>
+                                <div class="invalid-feedback"></div>
+                                <div class="form-text">請輸入 1-365 天之間的正整數</div>
+                            </div>
+
+                            <!-- 快速選擇按鈕 -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">快速選擇：</label>
+                                <div class="btn-group d-flex" role="group" aria-label="快速選擇延期天數">
+                                    <button type="button" class="btn btn-outline-secondary quick-select"
+                                        data-days="1">1天</button>
+                                    <button type="button" class="btn btn-outline-secondary quick-select"
+                                        data-days="3">3天</button>
+                                    <button type="button" class="btn btn-outline-secondary quick-select"
+                                        data-days="7">7天</button>
+                                    <button type="button" class="btn btn-outline-secondary quick-select"
+                                        data-days="14">14天</button>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">新到期日：</label>
+                                <span id="newDueDate" class="text-success fw-bold fs-5"></span>
+                                <div id="datePreviewHelp" class="form-text text-muted" style="display: none;">
+                                    延期後的新到期日將會是上述日期
+                                </div>
+                            </div>
+
+                            <div id="errorMessage" class="alert alert-danger" style="display: none;" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <span id="errorText"></span>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle me-1"></i>取消
+                        </button>
+                        <button type="button" class="btn btn-primary" id="confirmExtend">
+                            <i class="bi bi-check-circle me-1"></i>確認延期
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
+
 </html>
