@@ -1,7 +1,7 @@
 spring:
   application:
     name: todo-list-app
-  
+    # 禁用 favicon
   # H2 資料庫配置
   datasource:
     url: jdbc:h2:mem:todoapp_new;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -55,6 +55,9 @@ spring:
       name: admin
       password: admin
       roles: ADMIN
+  mvc:
+    favicon:
+      enabled: false
 
 # 日誌配置
 logging:
@@ -79,8 +82,3 @@ server:
         http-only: true
         secure: false
 
-# 禁用 favicon
-spring:
-  mvc:
-    favicon:
-      enabled: false
